@@ -13,6 +13,19 @@ console = Console()
 
 sleep_between_tx = 1
 
+STRATEGIES = {
+    "native.renCrv": "0xe66dB6Eb807e6DAE8BD48793E9ad0140a2DEE22A",
+    "native.sbtcCrv": "0x2f278515425c8eE754300e158116930B8EcCBBE1",
+    "native.tbtcCrv": "0x9e0742EE7BECde52A5494310f09aad639AA4790B",
+    "native.hbtcCrv": "0x7354D5119bD42a77E7162c8Afa8A1D18d5Da9cF8",
+    "native.pbtcCrv": "0x3f98F3a21B125414e4740316bd6Ef14718764a22",
+    "native.obtcCrv": "0x50Dd8A61Bdd11Cf5539DAA83Bc8E0F581eD8110a",
+    "native.bbtcCrv": "0xf92660E0fdAfE945aa13616428c9fB4BE19f4d34",
+    "native.tricrypto2": "0xf3202Aa2783F3DEE24a35853C6471db065B05D37",
+    # "native.cvxCrv": "0xf6D442Aead5960b283281A794B3e7d3605601247",
+    # "native.cvx": "0xc67129cf19BB00d60CC5CF62398fcA3A4Dc02a14",
+}
+
 
 def main():
     """
@@ -31,50 +44,63 @@ def main():
     """
 
     # Get deployer account from local keystore
-    dev = connect_account()
-
-    # Add deployed Strategy and Vault contracts here:
-    strategy = MyStrategy.at("0x809990849D53a5109e0cb9C446137793B9f6f1Eb")
-    vault = SettV3.at("0x6B2d4c4bb50274c5D4986Ff678cC971c0260E967")
-
-    assert strategy.paused() == False
-    assert vault.paused() == False
-
-    console.print("[blue]Strategy: [/blue]", strategy.getName())
-    console.print("[blue]Vault: [/blue]", vault.name())
-
+    # dev = connect_account()
     # Get production addresses from registry
     registry = BadgerRegistry.at(REGISTRY)
 
     governance = registry.get("governance")
     guardian = registry.get("guardian")
     keeper = registry.get("keeper")
-    controller = registry.get("controller")
+    native_controller = registry.get("controller")
+    dev_controller = registry.get("dev.controller")
     badgerTree = registry.get("badgerTree")
 
     assert governance != AddressZero
     assert guardian != AddressZero
     assert keeper != AddressZero
-    assert controller != AddressZero
+    assert native_controller != AddressZero
+    assert dev_controller != AddressZero
     assert badgerTree != AddressZero
 
-    # Check production parameters and update any mismatch
-    set_parameters(
-        dev,
-        strategy,
-        vault,
-        governance,
-        guardian,
-        keeper,
-        controller,
-    )
+    console.print("[cyan]devMultisig:[/cyan]", governance)
+    console.print("[cyan]Controller:[/cyan]", native_controller)
+    console.print("[cyan]Exp Controller:[/cyan]", dev_controller)
 
-    # Confirm all productions parameters
-    check_parameters(
-        strategy, vault, governance, guardian, keeper, controller, badgerTree
-    )
+    for name, address in STRATEGIES.items():
+        # Add deployed Strategy and Vault contracts here:
+        strategy = MyStrategy.at(address)
+        # vault = SettV3.at("0x6B2d4c4bb50274c5D4986Ff678cC971c0260E967")
+
+        assert strategy.paused() == False
+        # assert vault.paused() == False
+
+        console.print("[blue]Strategy: [/blue]", name)
+        console.print(address)
+        # console.print("[blue]Vault: [/blue]", vault.name())
+
+        # Check production parameters and update any mismatch
+        # set_parameters(
+        #     dev,
+        #     strategy,
+        #     vault,
+        #     governance,
+        #     guardian,
+        #     keeper,
+        #     controller,
+        # )
+
+        if name in ["native.renCrv", "native.sbtcCrv", "native.tbtcCrv"]:
+            controller = native_controller
+        else:
+            controller = dev_controller
+
+        # Confirm all productions parameters
+        check_parameters(
+            strategy, None, governance, guardian, keeper, controller, badgerTree
+        )
 
 
+"""
 def set_parameters(dev, strategy, vault, governance, guardian, keeper, controller):
     # Set Controller (deterministic)
     if strategy.controller() != controller:
@@ -132,30 +158,33 @@ def set_parameters(dev, strategy, vault, governance, guardian, keeper, controlle
         time.sleep(sleep_between_tx)
 
     console.print("[green]Governance existing or set at: [/green]", governance)
+"""
 
 
 def check_parameters(
     strategy, vault, governance, guardian, keeper, controller, badgerTree
 ):
-    assert strategy.want() == WANT
-    assert vault.token() == WANT
-    assert strategy.lpComponent() == LP_COMPONENT
-    assert strategy.reward() == REWARD_TOKEN
+    # assert strategy.want() == WANT
+    # assert vault.token() == WANT
+    # assert strategy.lpComponent() == LP_COMPONENT
+    # assert strategy.reward() == REWARD_TOKEN
 
     assert strategy.controller() == controller
-    assert vault.controller() == controller
+    console.print("[cyan]Strategy Controller:[/cyan]", strategy.controller())
+    # assert vault.controller() == controller
 
-    assert strategy.performanceFeeGovernance() == 1000
-    assert strategy.performanceFeeStrategist() == 1000
-    assert strategy.withdrawalFee() == 50
+    # assert strategy.performanceFeeGovernance() == 1000
+    # assert strategy.performanceFeeStrategist() == 1000
+    # assert strategy.withdrawalFee() == 50
 
-    assert strategy.keeper() == keeper
-    assert vault.keeper() == keeper
-    assert strategy.guardian() == guardian
-    assert vault.guardian() == guardian
-    assert strategy.strategist() == governance
+    # assert strategy.keeper() == keeper
+    # assert vault.keeper() == keeper
+    # assert strategy.guardian() == guardian
+    # assert vault.guardian() == guardian
+    # assert strategy.strategist() == governance
     assert strategy.governance() == governance
-    assert vault.governance() == governance
+    console.print("[cyan]Strategy governance:[/cyan]", strategy.governance())
+    # assert vault.governance() == governance
 
     # Not all strategies use the badgerTree
     try:
@@ -164,7 +193,7 @@ def check_parameters(
     except:
         pass
 
-    console.print("[blue]All Parameters checked![/blue]")
+    # console.print("[blue]All Parameters checked![/blue]")
 
 
 def connect_account():
